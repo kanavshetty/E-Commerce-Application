@@ -1,7 +1,9 @@
 from flask import Flask, render_template
 from api.DatabaseConnection.connection import DBConnection
+from api.AdminControls.getUser import admin_api
 
 app = Flask(__name__)
+app.register_blueprint(admin_api)
 
 @app.route("/")
 def home():
