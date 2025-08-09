@@ -7,41 +7,43 @@ import bcrypt
 auth_api = Blueprint('auth_api', __name__)
 
 @auth_api.route('/api/login', methods=['POST'])
-def login():
+def login_customer():
     data = request.json
     email = data.get('email')
     password = data.get('password')
 
-    if not email or not password:
-        return jsonify(success=False, message="Missing fields"), 400
+    if not all([email, password]):
+        return jsonify(success=False, message="Both Email and Password are required"), 400
 
     try:
         db_connection = DBConnection.get_instance().get_connection()
         cursor = db_connection.cursor()
 
-        cursor.execute("SELECT customer_id, email, password_hash FROM customers WHERE email = %s;", (email,))
+
+        cursor.execute("SELECT customer_id, password_hash, is_staff FROM customers WHERE email = %s;", (email,))
         user = cursor.fetchone()
         cursor.close()
 
         if not user:
             return jsonify(success=False, message="Invalid email or password"), 401
 
-        customer_id, email, password_hash = user[0], user[1], user[2]
+        customer_id = user['customer_id']
+        password_hash = user['password_hash']
+        is_staff = user['is_staff']
 
         if not bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
             return jsonify(success=False, message="Invalid email or password"), 401
 
-        # Create JWT Token
+        # Generate JWT token and set cookie
         access_token = create_access_token(identity=customer_id, expires_delta=timedelta(days=1))
-
-        # Set token inside a cookie
-        response = make_response(jsonify(success=True, message="Login successful"))
+        response = make_response(jsonify(success=True, message="Login successful", customer_id=customer_id, is_staff=is_staff))
         set_access_cookies(response, access_token)
 
         return response, 200
 
     except Exception as e:
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500
+
 
 @auth_api.route('/api/logout', methods=['POST'])
 @jwt_required()
@@ -54,4 +56,20 @@ def logout():
 @jwt_required()
 def check_auth():
     customer_id = get_jwt_identity()
-    return jsonify(success=True, customer_id=customer_id), 200
+
+    try:
+        db_connection = DBConnection.get_instance().get_connection()
+        cursor = db_connection.cursor(dictionary=True)
+
+        cursor.execute("SELECT name, email FROM customers WHERE customer_id = %s;", (customer_id,))
+        user = cursor.fetchone()
+        cursor.close()
+
+        if not user:
+            return jsonify(success=False, message="User not found"), 404
+
+        return jsonify(success=True, user=user), 200
+
+    except Exception as e:
+        return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500
+

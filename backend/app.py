@@ -27,7 +27,7 @@ from api.CustomerAPI.Cart.updateCartQuant import cart_api as update_cart_item_ap
 
 from api.CustomerAPI.Order.placeOrder import order_api as place_order_api
 from api.CustomerAPI.Order.viewCurrentOrder import order_api as view_current_order_api
-from api.CustomerAPI.Order.viewPastOrders import order_api as view_past_orders_api
+from api.CustomerAPI.Order.viewPastOrders import view_orders_api
 
 from api.CustomerAPI.Cart.searchProduct import product_search_api
 
@@ -35,6 +35,7 @@ from api.StaffAPI.ProductManagement.addProduct import product_api as add_product
 from api.StaffAPI.ProductManagement.modifyProduct import product_api as modify_product_api
 from api.StaffAPI.ProductManagement.deleteProduct import product_api as delete_product_api
 from api.StaffAPI.ProductManagement.viewProduct import product_api as view_product_api
+from api.StaffAPI.ProductManagement.updatePrice import price_api
 
 from api.StaffAPI.Stock.addStock import stock_api as add_stock_api
 from api.StaffAPI.Stock.checkInventory import stock_api as check_inventory_api
@@ -49,7 +50,7 @@ from api.SuppliersAPI.viewSuppliers import supplier_api as view_suppliers_api
 
 # ✅ Initialize Flask app
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 
 # ✅ Configure JWT
@@ -58,6 +59,7 @@ app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
 app.config['JWT_COOKIE_SECURE'] = False  # True if using HTTPS
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
 
 jwt = JWTManager(app)
 
@@ -67,6 +69,8 @@ app.register_blueprint(address_api)
 app.register_blueprint(edit_address_api)
 app.register_blueprint(delete_address_api)
 app.register_blueprint(view_address_api)
+
+app.register_blueprint(price_api)
 
 # Customer Credit Card APIs
 app.register_blueprint(credit_card_api)
@@ -88,7 +92,7 @@ app.register_blueprint(update_cart_item_api)
 # Customer Order APIs
 app.register_blueprint(place_order_api)
 app.register_blueprint(view_current_order_api)
-app.register_blueprint(view_past_orders_api)
+app.register_blueprint(view_orders_api)
 
 # Customer Product Search
 app.register_blueprint(product_search_api)

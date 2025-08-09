@@ -1,3 +1,4 @@
+import traceback
 from flask import Blueprint, request, jsonify
 from api.DatabaseConnection.connection import DBConnection
 
@@ -11,7 +12,7 @@ def add_credit_card():
     card_number = data.get("card_number")
     expiry_date = data.get("expiry_date")
     cvv = data.get("cvv")
-    billing_address_id = data.get("billing_address_id")  # Assume user picks from their addresses
+    billing_address_id = data.get("billing_address_id")
 
     if not all([customer_id, card_number, expiry_date, cvv, billing_address_id]):
         return jsonify(success=False, message="Missing credit card fields"), 400
@@ -21,18 +22,14 @@ def add_credit_card():
         cursor = db_connection.cursor()
 
         cursor.execute("""
-            INSERT INTO credit_cards (card_number, expiry_date, cvv, billing_address_id)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO credit_cards (
+                customer_id, card_number, expiration_date, cvv, payment_address_id
+            )
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING card_id;
-        """, (card_number, expiry_date, cvv, billing_address_id))
+        """, (customer_id, card_number, expiry_date, cvv, billing_address_id))
 
-        card_id = cursor.fetchone()[0]
-
-        cursor.execute("""
-            INSERT INTO customer_credit_cards (customer_id, card_id)
-            VALUES (%s, %s);
-        """, (customer_id, card_id))
-
+        card_id = cursor.fetchone()['card_id']
         db_connection.commit()
         cursor.close()
 
@@ -41,5 +38,8 @@ def add_credit_card():
             message="Credit card added successfully!",
             card_id=card_id,
         ), 201
+
     except Exception as e:
+        db_connection.rollback()
+        traceback.print_exc()
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500

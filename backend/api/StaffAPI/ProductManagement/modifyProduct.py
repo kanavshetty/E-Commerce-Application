@@ -13,7 +13,6 @@ def modify_product():
     category = data.get("category")
     brand = data.get("brand")
     size = data.get("size")
-    price = data.get("price")
 
     if not product_id:
         return jsonify(success=False, message="Missing product_id"), 400
@@ -36,9 +35,6 @@ def modify_product():
     if size:
         fields.append("size = %s")
         values.append(size)
-    if price is not None:
-        fields.append("price = %s")
-        values.append(price)
 
     if not fields:
         return jsonify(success=False, message="No fields to update"), 400

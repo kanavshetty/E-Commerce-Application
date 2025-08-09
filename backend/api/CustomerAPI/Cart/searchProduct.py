@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from api.DatabaseConnection.connection import DBConnection
+import psycopg2.extras  # or import the one your DB API uses
 
 product_search_api = Blueprint('search_product_api', __name__)
 
@@ -12,37 +13,36 @@ def search_products():
 
     try:
         db_connection = DBConnection.get_instance().get_connection()
-        cursor = db_connection.cursor()
+        cursor = db_connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)  # ✅ dict output
 
-        search_query = f"""
-            SELECT product_id, name, description, category, brand, size, price
-            FROM products
-            WHERE LOWER(name) LIKE %s
-               OR LOWER(description) LIKE %s
-               OR LOWER(category) LIKE %s
-               OR LOWER(brand) LIKE %s
-            ORDER BY name ASC;
+        search_query = """
+            SELECT 
+                p.product_id,
+                p.name,
+                p.description,
+                p.category,
+                p.brand,
+                p.size,
+                pp.price
+            FROM 
+                products p
+            LEFT JOIN 
+                product_prices pp ON p.product_id = pp.product_id
+            WHERE 
+                LOWER(p.name) LIKE %s OR
+                LOWER(p.description) LIKE %s OR
+                LOWER(p.category) LIKE %s OR
+                LOWER(p.brand) LIKE %s
+            ORDER BY 
+                p.name ASC;
         """
 
-        keyword_like = f"%{keyword.lower()}%"
-
-        cursor.execute(search_query, (keyword_like, keyword_like, keyword_like, keyword_like))
+        keyword_like = f"%{keyword.strip().lower()}%"
+        cursor.execute(search_query, (keyword_like,) * 4)
 
         products = cursor.fetchall()
         cursor.close()
 
-        product_list = []
-        for p in products:
-            product_list.append({
-                "product_id": p[0],
-                "name": p[1],
-                "description": p[2],
-                "category": p[3],
-                "brand": p[4],
-                "size": p[5],
-                "price": p[6],
-            })
-
-        return jsonify(success=True, products=product_list), 200
+        return jsonify(success=True, products=products), 200  # Already a list of dicts
     except Exception as e:
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500

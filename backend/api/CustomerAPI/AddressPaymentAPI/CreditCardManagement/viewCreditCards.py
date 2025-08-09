@@ -1,3 +1,4 @@
+import traceback
 from flask import Blueprint, request, jsonify
 from api.DatabaseConnection.connection import DBConnection
 
@@ -15,10 +16,10 @@ def view_credit_cards():
         cursor = db_connection.cursor()
 
         cursor.execute("""
-            SELECT cc.card_id, cc.card_number, cc.expiry_date, cc.billing_address_id
-            FROM credit_cards cc
-            INNER JOIN customer_credit_cards ccc ON cc.card_id = ccc.card_id
-            WHERE ccc.customer_id = %s;
+            SELECT card_id, card_number, expiration_date, payment_address_id
+            FROM credit_cards
+            WHERE customer_id = %s;
+
         """, (customer_id,))
 
         cards = cursor.fetchall()
@@ -27,12 +28,14 @@ def view_credit_cards():
         card_list = []
         for card in cards:
             card_list.append({
-                "card_id": card[0],
-                "card_number": card[1],
-                "expiry_date": card[2],
-                "billing_address_id": card[3]
+                "card_id": card['card_id'],
+                "card_number": card['card_number'],
+                "last4": card["card_number"][-4:],
+                "expiry": card["expiration_date"],
+                "billing_address_id": card['payment_address_id']
             })
 
         return jsonify(success=True, cards=card_list), 200
     except Exception as e:
+        traceback.print_exc()
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500

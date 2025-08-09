@@ -18,13 +18,14 @@ def remove_from_cart():
         cursor = db_connection.cursor()
 
         cursor.execute("""
-            DELETE FROM shopping_cart
-            WHERE customer_id = %s AND product_id = %s;
-        """, (customer_id, product_id))
+            DELETE FROM shopping_carts
+            WHERE customer_id = %s;
+        """, (customer_id,))
 
         db_connection.commit()
         cursor.close()
 
         return jsonify(success=True, message="Item removed from cart"), 200
     except Exception as e:
+        db_connection.rollback()
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500

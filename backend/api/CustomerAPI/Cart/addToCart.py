@@ -1,49 +1,64 @@
 from flask import Blueprint, request, jsonify
 from api.DatabaseConnection.connection import DBConnection
+import traceback
+import psycopg2.extras  # assuming PostgreSQL
 
 cart_api = Blueprint('add_to_cart_api', __name__)
 
 @cart_api.route('/api/add-to-cart', methods=['POST'])
 def add_to_cart():
-    data = request.json
+    data = request.get_json()
 
     customer_id = data.get("customer_id")
     product_id = data.get("product_id")
     quantity = data.get("quantity", 1)
 
-    if not all([customer_id, product_id]):
-        return jsonify(success=False, message="Missing fields"), 400
-
     try:
-        db_connection = DBConnection.get_instance().get_connection()
-        cursor = db_connection.cursor()
+        # Validate and convert types
+        customer_id = int(customer_id)
+        product_id = int(product_id)
+        quantity = int(quantity)
 
-        # Check if item already in cart
-        cursor.execute("""
-            SELECT quantity FROM shopping_cart
-            WHERE customer_id = %s AND product_id = %s;
-        """, (customer_id, product_id))
+        db = DBConnection.get_instance().get_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        existing = cursor.fetchone()
+        # Check if cart exists for this customer
+        cursor.execute("SELECT cart_id FROM shopping_carts WHERE customer_id = %s LIMIT 1;", (customer_id,))
+        cart = cursor.fetchone()
 
-        if existing:
-            # Update quantity
-            new_quantity = existing[0] + quantity
-            cursor.execute("""
-                UPDATE shopping_cart
-                SET quantity = %s
-                WHERE customer_id = %s AND product_id = %s;
-            """, (new_quantity, customer_id, product_id))
+        if cart:
+            cart_id = cart["cart_id"]
         else:
-            # Insert new cart item
-            cursor.execute("""
-                INSERT INTO shopping_cart (customer_id, product_id, quantity)
-                VALUES (%s, %s, %s);
-            """, (customer_id, product_id, quantity))
+            # Create new cart
+            cursor.execute(
+                "INSERT INTO shopping_carts (customer_id) VALUES (%s) RETURNING cart_id;",
+                (customer_id,)
+            )
+            cart_id = cursor.fetchone()["cart_id"]
 
-        db_connection.commit()
+        # Check if item already exists
+        cursor.execute(
+            "SELECT quantity FROM cart_items WHERE cart_id = %s AND product_id = %s;",
+            (cart_id, product_id)
+        )
+        item = cursor.fetchone()
+
+        if item:
+            new_qty = item["quantity"] + quantity
+            cursor.execute(
+                "UPDATE cart_items SET quantity = %s WHERE cart_id = %s AND product_id = %s;",
+                (new_qty, cart_id, product_id)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (%s, %s, %s);",
+                (cart_id, product_id, quantity)
+            )
+
+        db.commit()
         cursor.close()
-
         return jsonify(success=True, message="Item added to cart"), 201
+
     except Exception as e:
-        return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500
+        traceback.print_exc()
+        return jsonify(success=False, message=f"An error occurred: {e}"), 500

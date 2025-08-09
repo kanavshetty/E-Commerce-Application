@@ -21,13 +21,20 @@ def add_product():
         db_connection = DBConnection.get_instance().get_connection()
         cursor = db_connection.cursor()
 
+        # First insert into products
         cursor.execute("""
-            INSERT INTO products (name, description, category, brand, size, price)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO products (name, description, category, brand, size)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING product_id;
-        """, (name, description, category, brand, size, price))
+        """, (name, description, category, brand, size))
 
-        product_id = cursor.fetchone()[0]
+        product_id = cursor.fetchone()['product_id']
+
+        # Then insert price into product_prices
+        cursor.execute("""
+            INSERT INTO product_prices (product_id, price)
+            VALUES (%s, %s);
+        """, (product_id, price))
 
         db_connection.commit()
         cursor.close()

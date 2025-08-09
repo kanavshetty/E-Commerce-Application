@@ -1,3 +1,4 @@
+import traceback
 from flask import Blueprint, request, jsonify
 from api.DatabaseConnection.connection import DBConnection
 
@@ -27,15 +28,16 @@ def view_addresses():
         address_list = []
         for addr in addresses:
             address_list.append({
-                "address_id": addr[0],
-                "street": addr[1],
-                "city": addr[2],
-                "state": addr[3],
-                "zip_code": addr[4],
-                "country": addr[5],
-                "address_type": addr[6],
+                "address_id": addr['address_id'],
+                "street": addr['street'],
+                "city": addr['city'],
+                "state": addr['state'],
+                "zip_code": addr['zip_code'],
+                "country": addr['country'],
+                "address_type": addr['address_type'],
             })
 
         return jsonify(success=True, addresses=address_list), 200
     except Exception as e:
+        traceback.print_exc()  # ← Add this
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500

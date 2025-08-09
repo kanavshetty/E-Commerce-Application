@@ -15,6 +15,9 @@ def addAddress():
     country = data.get("country")
     address_type = data.get("address_type")
 
+    address_type= address_type.strip().lower(),
+
+
     if not all([customer_id, street, city, state, zip_code, country, address_type]):
         return jsonify(success=False, message="Missing address fields"), 400
 
@@ -28,7 +31,7 @@ def addAddress():
             RETURNING address_id;
         """, (street, city, state, zip_code, country))
 
-        address_id = cursor.fetchone()[0]
+        address_id = cursor.fetchone()['address_id']
 
         cursor.execute("""
             INSERT INTO customer_addresses (customer_id, address_id, address_type)
@@ -43,5 +46,8 @@ def addAddress():
             message="Address added successfully!",
             address_id=address_id,
         ), 201
+   
     except Exception as e:
+        db_connection.rollback()  # ← REQUIRED
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500
+

@@ -23,7 +23,7 @@ def edit_credit_card():
         fields.append("card_number = %s")
         values.append(card_number)
     if expiry_date:
-        fields.append("expiry_date = %s")
+        fields.append("expiration_date = %s")
         values.append(expiry_date)
     if cvv:
         fields.append("cvv = %s")

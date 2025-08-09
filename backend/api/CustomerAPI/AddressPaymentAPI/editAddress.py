@@ -3,7 +3,7 @@ from api.DatabaseConnection.connection import DBConnection
 
 edit_address_api = Blueprint('edit_address_api', __name__)
 
-@edit_address_api.route('/api/edit-address', methods=['PUT'])
+@edit_address_api.route('/api/update-address', methods=['POST', 'PUT'])
 def edit_address():
     data = request.json
 

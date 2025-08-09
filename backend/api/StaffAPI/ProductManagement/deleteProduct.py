@@ -16,14 +16,17 @@ def delete_product():
         db_connection = DBConnection.get_instance().get_connection()
         cursor = db_connection.cursor()
 
-        cursor.execute("""
-            DELETE FROM products
-            WHERE product_id = %s;
-        """, (product_id,))
+        
+        cursor.execute("DELETE FROM product_prices WHERE product_id = %s;", (product_id,))
+        cursor.execute("DELETE FROM products WHERE product_id = %s;", (product_id,))
+
 
         db_connection.commit()
         cursor.close()
 
         return jsonify(success=True, message="Product deleted successfully!"), 200
     except Exception as e:
+        if db_connection:
+            db_connection.rollback()
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500
+

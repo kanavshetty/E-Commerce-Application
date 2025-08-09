@@ -9,7 +9,7 @@ def place_order():
     data = request.json
 
     customer_id = data.get("customer_id")
-    credit_card_id = data.get("credit_card_id")
+    credit_card_id = data.get("credit_card_id") or data.get("card_id")
     products = data.get("products")  # List of dicts: [{ "product_id": x, "quantity": y }]
     delivery_type = data.get("delivery_type", "standard")  # Default is "standard"
     delivery_price = data.get("delivery_price", 5.0)  # Default fee if none specified
@@ -26,12 +26,14 @@ def place_order():
 
         # Insert the order first
         cursor.execute("""
-            INSERT INTO orders (customer_id, credit_card_id, status, order_date)
+            INSERT INTO orders (customer_id, card_id, status, order_date)
             VALUES (%s, %s, %s, %s)
             RETURNING order_id;
-        """, (customer_id, credit_card_id, "issued", datetime.utcnow()))
+        """, (customer_id, credit_card_id, 'issued', datetime.utcnow()))
 
-        order_id = cursor.fetchone()[0]
+
+
+        order_id = cursor.fetchone()['order_id']
 
         # Insert each product into order_items
         for item in products:
@@ -55,8 +57,8 @@ def place_order():
             product_id = item["product_id"]
             quantity = item["quantity"]
 
-            cursor.execute("SELECT price FROM products WHERE product_id = %s;", (product_id,))
-            price = cursor.fetchone()[0]
+            cursor.execute("SELECT price FROM product_prices WHERE product_id = %s;", (product_id,))
+            price = cursor.fetchone()['price']
             total_amount += price * quantity
 
         cursor.execute("""
@@ -68,6 +70,6 @@ def place_order():
         db_connection.commit()
         cursor.close()
 
-        return jsonify(success=True, message="Order placed successfully!", order_id=order_id), 201
+        return jsonify(success=True, message="Order placed successfully!", order_id=order_id, total=float(total_amount)), 201
     except Exception as e:
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500

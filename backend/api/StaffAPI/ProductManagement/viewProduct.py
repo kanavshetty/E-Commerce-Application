@@ -10,25 +10,20 @@ def view_products():
         cursor = db_connection.cursor()
 
         cursor.execute("""
-            SELECT product_id, name, description, category, brand, size, price
-            FROM products;
+            SELECT 
+                p.*, 
+                pp.price
+            FROM 
+                products p
+            LEFT JOIN 
+                product_prices pp
+            ON 
+                p.product_id = pp.product_id;
         """)
 
         products = cursor.fetchall()
         cursor.close()
 
-        product_list = []
-        for p in products:
-            product_list.append({
-                "product_id": p[0],
-                "name": p[1],
-                "description": p[2],
-                "category": p[3],
-                "brand": p[4],
-                "size": p[5],
-                "price": p[6],
-            })
-
-        return jsonify(success=True, products=product_list), 200
+        return jsonify(success=True, products=products), 200
     except Exception as e:
         return jsonify(success=False, message=f"An error occurred: {str(e)}"), 500
